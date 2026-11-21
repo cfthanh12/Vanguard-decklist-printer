@@ -4,7 +4,7 @@
   "description": "DeckLog deck -> printable proxy PDF",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --test",
     "start": "node server.js",
     "build:binaries": "bash scripts/build-binaries.sh"
   },
