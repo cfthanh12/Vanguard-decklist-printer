@@ -1,6 +1,6 @@
 # decklist-printer
 
-Take a [DeckLog](https://decklog-en.bushiroad.com) deck and turn it into a print-ready PDF: A4, nine cards per page, 59 × 86 mm each, art upscaled to 450 dpi.
+Build and print proxy decks locally. Search the official card database, edit a deck with unlimited copies, add custom picture cards, and turn it into a print-ready PDF: A4, nine cards per page, 59 × 86 mm each, art upscaled to 450 dpi.
 
 ## Run from source
 
@@ -9,9 +9,11 @@ npm install
 npm start
 ```
 
-Opens http://localhost:3000. Paste a deck code (`6ZGG1`) or a deck URL.
+Opens http://localhost:3000. Use **My decks** to create, open, rename, duplicate, or delete saved decks.
 
-Every card has a `−` / `+` stepper. Drop a 4-of to 2, or to 0 to leave it off the sheet. The card and page counts follow your numbers, and **Reset copies** puts the deck list back.
+Search the official database with filters, add cards to the open deck, and use each card's `−` / `+` stepper. Counts have no upper limit; use `×` or reduce to zero to remove a card. You can also add a custom card from a name and image file.
+
+Paste a [DeckLog](https://decklog-en.bushiroad.com) deck code (`6ZGG1`) or URL to import it as a new saved deck. Deck changes autosave locally. **Export deck** downloads a one-file JSON handoff with custom images embedded; **Import deck file** restores it as a new saved deck.
 
 ## Share it as a one-file app
 
@@ -37,6 +39,7 @@ Rebuild them with `npm run build:binaries` (requires [Bun](https://bun.sh) once:
 ## How it works
 
 - Deck data: DeckLog's `POST /system/app/api/view/{code}` endpoint, which returns each card, its quantity, and the exact printing you picked.
+- Saved data: deck JSON and custom images are stored under `~/.decklist-printer/` (`DECKLIST_DATA_DIR` overrides this for tests or portable setups).
 - Card art: `en.cf-vanguard.com/wordpress/wp-content/images/cardlist/...`. Official art is 350 × 510 px, so the 3× upscale happens at print time. It sharpens edges; it cannot recover detail that is not in the source.
 - Layout: A4 portrait, 3 × 3 grid, 5 mm gaps, centered. Landscape cards (ride deck crest) are rotated to keep their true size.
 

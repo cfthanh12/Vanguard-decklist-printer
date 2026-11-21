@@ -505,6 +505,9 @@
         </div>
         <div class="actions">
           <button class="btn btn-primary" type="button" id="download">Download PDF</button>
+          <button class="btn btn-quiet" type="button" id="export-deck">Export deck</button>
+          <button class="btn btn-quiet" type="button" id="import-deck-file">Import deck file</button>
+          <input id="deck-file" type="file" accept="application/json,.json" hidden>
           <p class="saved" id="saved"></p>
         </div>
       </div>
@@ -564,6 +567,9 @@
   const searchResults = $("search-results");
   const loadMoreBtn = $("load-more");
   const customForm = $("custom-form");
+  const exportDeckBtn = $("export-deck");
+  const importDeckFileBtn = $("import-deck-file");
+  const deckFileInput = $("deck-file");
   const status = document.createElement("p");
   status.className = "sr-only";
   status.setAttribute("aria-live", "polite");
@@ -1170,6 +1176,88 @@
     $("reset").hidden = !counts.some((n, i) => n !== baseCounts[i]);
   }
 
+  async function exportDeckFile() {
+    if (!currentDeck) {
+      showError("Open a deck first.", "Choose a saved deck before exporting.");
+      return;
+    }
+    try {
+      const res = await fetch("/api/decks/" + encodeURIComponent(currentDeck.id) + "/export");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Could not export deck.");
+      }
+      const blob = await res.blob();
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `deck-${(currentDeck.name || "deck").replace(/[^A-Za-z0-9_-]+/g, "-")}.json`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+      announce("Deck exported.");
+    } catch (error) {
+      showError("Could not export deck.", error.message || String(error));
+    }
+  }
+
+  async function importDeckFile(file) {
+    if (!file) return;
+    try {
+      const payload = JSON.parse(await file.text());
+      const res = await fetch("/api/decks/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const deck = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(deck.error || "Could not import deck.");
+      await loadLibrary();
+      await openDeck(deck.id);
+      announce(`Imported ${deck.name || "deck"}.`);
+    } catch (error) {
+      showError("Could not import deck.", error.message || String(error));
+    } finally {
+      deckFileInput.value = "";
+    }
+  }
+
+  async function importDeckLog(code) {
+    const res = await fetch("/api/deck?code=" + encodeURIComponent(code));
+    const deck = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(deck.error || "That deck could not be read.");
+
+    const name = deck.title || deck.code || String(code).trim();
+    const createRes = await fetch("/api/decks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    const created = await createRes.json().catch(() => ({}));
+    if (!createRes.ok) throw new Error(created.error || "Could not create deck.");
+
+    created.name = name;
+    created.cards = (deck.cards || []).filter((card) => card.num > 0 && card.img).map((card) => ({
+      id: crypto.randomUUID(),
+      source: "db",
+      card_number: card.card_number,
+      name: card.name,
+      picture: card.img,
+      count: card.num,
+      landscape: card.landscape,
+    }));
+
+    const saveRes = await fetch("/api/decks/" + encodeURIComponent(created.id), {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(created),
+    });
+    const saved = await saveRes.json().catch(() => ({}));
+    if (!saveRes.ok) throw new Error(saved.error || "Could not save imported deck.");
+
+    await loadLibrary();
+    await openDeck(saved.id);
+    history.replaceState(null, "", "?code=" + encodeURIComponent(deck.code || code));
+  }
+
   async function load(code) {
     if (!code.trim()) {
       showError("Enter a deck code", "Paste a DeckLog link or its code, for example 6ZGG1.");
@@ -1182,11 +1270,7 @@
     skeletons(9);
     announce("Reading deck.");
     try {
-      const res = await fetch("/api/deck?code=" + encodeURIComponent(code));
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "That deck could not be read.");
-      render(data);
-      history.replaceState(null, "", "?code=" + encodeURIComponent(data.code));
+      await importDeckLog(code);
     } catch (error) {
       sheets.hidden = true;
       empty.hidden = false;
@@ -1201,7 +1285,7 @@
   }
 
   async function download() {
-    if (!current || building) return;
+    if (building || (!current && !currentDeck)) return;
     building = true;
     downloadBtn.disabled = true;
     downloadBtn.textContent = "Building…";
@@ -1210,10 +1294,13 @@
     progressText.textContent = "Building pages from card art. This takes about 5 to 10 seconds.";
     announce("Building the PDF.");
     try {
+      const payload = currentDeck
+        ? { title: currentDeck.name || "Deck", cards: currentDeck.cards }
+        : { code: current, counts };
       const res = await fetch("/api/pdf", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: current, counts }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -1222,11 +1309,12 @@
       const blob = await res.blob();
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
-      link.download = `deck-${current}.pdf`;
+      const baseName = currentDeck ? (currentDeck.name || "deck") : `deck-${current}`;
+      link.download = `${baseName}.pdf`;
       link.click();
       URL.revokeObjectURL(link.href);
       const mb = (blob.size / 1048576).toFixed(1);
-      saved.textContent = `Saved deck-${current}.pdf · ${mb} MB`;
+      saved.textContent = `Saved ${baseName}.pdf · ${mb} MB`;
       announce("PDF saved.");
     } catch (error) {
       showError(error.message || "The PDF could not be built.", "Try again; nothing was downloaded.");
@@ -1243,6 +1331,9 @@
     load(input.value);
   });
   downloadBtn.addEventListener("click", download);
+  exportDeckBtn.addEventListener("click", exportDeckFile);
+  importDeckFileBtn.addEventListener("click", () => deckFileInput.click());
+  deckFileInput.addEventListener("change", () => importDeckFile(deckFileInput.files[0]));
   $("reset").addEventListener("click", () => {
     counts = [...baseCounts];
     saved.textContent = "";
