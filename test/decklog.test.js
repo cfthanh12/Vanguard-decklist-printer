@@ -61,6 +61,41 @@ test("deckCards merges p_list and list, drops num:0 and missing images", () => {
   assert.ok(!cards.some((card) => card.num === 0));
 });
 
+test("deckCards combines repeated card names and sums their copies", () => {
+  const cards = deckCards({
+    p_list: [
+      {
+        num: 1,
+        img: "first.png",
+        card_number: "X",
+        name: "Moonflower",
+        width: 100,
+        height: 140,
+      },
+    ],
+    list: [
+      {
+        num: 3,
+        img: "second.png",
+        card_number: "Y",
+        name: " moonflower ",
+        width: 80,
+        height: 120,
+      },
+    ],
+  });
+
+  assert.deepEqual(cards, [
+    {
+      card_number: "X",
+      name: "Moonflower",
+      num: 4,
+      img: "first.png",
+      landscape: false,
+    },
+  ]);
+});
+
 test("applyCounts clamps each count into the card's num range", () => {
   assert.deepEqual(applyCounts([{ num: 2 }, { num: 3 }], [0, 99]), [
     { num: 0 },

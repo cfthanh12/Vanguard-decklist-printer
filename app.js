@@ -171,12 +171,28 @@ export function createApp({ html, fetchFn = fetch }) {
       if (!ext) throw new HttpError(400, "Unsupported image type.");
 
       const deck = await getDeck(req.params.id);
+      const name = String(req.query.name || "").trim();
+      const existingCard = name
+        ? deck.cards.find(
+            (card) =>
+              card.source === "custom" &&
+              String(card.name || "").trim().toLowerCase() === name.toLowerCase()
+          )
+        : null;
+      if (existingCard) {
+        const count = Number(existingCard.count);
+        existingCard.count = (Number.isFinite(count) && count > 0 ? count : 1) + 1;
+        await saveDeck(deck);
+        res.json(deck);
+        return;
+      }
+
       const cardId = newId();
       const image = await storeCustomImage(deck.id, cardId, req.body, ext);
       const card = {
         id: cardId,
         source: "custom",
-        name: String(req.query.name || ""),
+        name,
         image,
         count: 1,
       };
