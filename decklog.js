@@ -37,16 +37,27 @@ export async function fetchDeck(code, { fetchFn = fetch } = {}) {
 
 export function deckCards(deck) {
   const cards = [];
+  const cardsByName = new Map();
   for (const card of [...(deck.p_list || []), ...(deck.list || [])]) {
     const num = Number(card.num) || 0;
     if (!num || !card.img) continue;
-    cards.push({
+    const name = card.name || card.card_name || card.card_number;
+    const key = String(name || "").trim().toLowerCase();
+    const existing = key ? cardsByName.get(key) : null;
+    if (existing) {
+      existing.num += num;
+      continue;
+    }
+
+    const result = {
       card_number: card.card_number,
-      name: card.name || card.card_name || card.card_number,
+      name,
       num,
       img: card.img,
       landscape: Number(card.width) > Number(card.height),
-    });
+    };
+    cards.push(result);
+    if (key) cardsByName.set(key, result);
   }
   return cards;
 }
