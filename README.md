@@ -1,48 +1,52 @@
-# decklist-printer
+# Decklist Printer
 
-Build and print proxy decks locally. Search the official card database, edit a deck with unlimited copies, add custom picture cards, and turn it into a print-ready PDF: A4, nine cards per page, 59 × 86 mm each, art upscaled to 450 dpi.
+Build, edit, and print Vanguard proxy decks. Import a DeckLog deck, search the card database, add custom image cards, and create a print-ready PDF.
+
+## Download
+
+Choose the ZIP for your computer, extract it, and follow the included `START-HERE.txt`. No Node.js installation or setup is required.
+
+| Platform | Download |
+| --- | --- |
+| Windows 10/11 (x64) | [Download DecklistPrinter-Windows.zip](https://github.com/cfthanh12/decklist-printer/releases/download/v1.0.0/DecklistPrinter-Windows.zip) |
+| macOS (Apple Silicon and Intel) | [Download DecklistPrinter-Mac.zip](https://github.com/cfthanh12/decklist-printer/releases/download/v1.0.0/DecklistPrinter-Mac.zip) |
+| Linux (x64) | [Download DecklistPrinter-Linux.zip](https://github.com/cfthanh12/decklist-printer/releases/download/v1.0.0/DecklistPrinter-Linux.zip) |
+
+The app opens in your browser at `http://localhost:3000` (or the next available port). It needs an internet connection to load DeckLog decks and card images.
+
+### First-launch notes
+
+- The executables are unsigned. Windows may show SmartScreen; macOS may require right-clicking the app and choosing **Open** the first time.
+- Your saved decks and custom images stay on your computer under `~/.decklist-printer/`.
+
+## Features
+
+- Import a public DeckLog deck by code or URL. Cards with the same name are combined.
+- Search the official card database with filters, including nation and clan.
+- Create and autosave decks locally, with no copy limit.
+- Add custom cards using your own image.
+- Export and import deck files, including custom images.
+- Print an A4 PDF with nine 59 × 86 mm cards per page.
 
 ## Run from source
+
+Requires Node.js.
 
 ```sh
 npm install
 npm start
 ```
 
-Opens http://localhost:3000. Use **My decks** to create, open, rename, duplicate, or delete saved decks.
+## Build executables
 
-Search the official database with filters, add cards to the open deck, and use each card's `−` / `+` stepper. Counts have no upper limit; use `×` or reduce to zero to remove a card. You can also add a custom card from a name and image file.
+Requires [Bun](https://bun.sh) in addition to Node.js.
 
-Paste a [DeckLog](https://decklog-en.bushiroad.com) deck code (`6ZGG1`) or URL to import it as a new saved deck. Deck changes autosave locally. **Export deck** downloads a one-file JSON handoff with custom images embedded; **Import deck file** restores it as a new saved deck.
+```sh
+npm run build:binaries
+```
 
-## Share it as a one-file app
+The executables are written to `dist/`.
 
-Ready-to-send zips live in `dist/share/`:
+## Printing
 
-| Zip | Contains |
-| --- | --- |
-| [DecklistPrinter-Windows.zip](https://github.com/cfthanh12/decklist-printer/releases/download/v1.0.0/DecklistPrinter-Windows.zip) | Windows 10/11 (x64) |
-| [DecklistPrinter-Mac.zip](https://github.com/cfthanh12/decklist-printer/releases/download/v1.0.0/DecklistPrinter-Mac.zip) | macOS Apple silicon + Intel |
-| [DecklistPrinter-Linux.zip](https://github.com/cfthanh12/decklist-printer/releases/download/v1.0.0/DecklistPrinter-Linux.zip) | Linux (x64) |
-
-Download the zip for your computer. Each one contains a self-contained executable plus `START-HERE.txt`: no Node, no installer, no setup. If you are not sure which one you need, choose Windows.
-
-Rebuild them with `npm run build:binaries` (requires [Bun](https://bun.sh) once: `npm i -g bun`).
-
-### Caveats worth knowing before you send it
-
-- **Around 90–110 MB per file** (the Bun runtime is most of it). Zipped it is about half that.
-- **Unsigned**, so Windows SmartScreen says "Windows protected your PC" (More info → Run anyway) and macOS needs right-click → Open the first time.
-- **Needs internet**, because the deck and card art come from DeckLog and the official card database.
-- The binary starts a local server on port 3000 (falls back to 3001–3019 if taken) and opens your browser.
-
-## How it works
-
-- Deck data: DeckLog's `POST /system/app/api/view/{code}` endpoint, which returns each card, its quantity, and the exact printing you picked.
-- Saved data: deck JSON and custom images are stored under `~/.decklist-printer/` (`DECKLIST_DATA_DIR` overrides this for tests or portable setups).
-- Card art: `en.cf-vanguard.com/wordpress/wp-content/images/cardlist/...`. Official art is 350 × 510 px, so the 3× upscale happens at print time. It sharpens edges; it cannot recover detail that is not in the source.
-- Layout: A4 portrait, 3 × 3 grid, 5 mm gaps, centered. Landscape cards (ride deck crest) are rotated to keep their true size.
-
-## Print
-
-Print at 100% with "fit to page" turned off.
+Print at 100% scale with **Fit to page** turned off.
