@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Decklist Printer</title>
+<style>
+  :root {
+    --paper: oklch(0.983 0.004 75);
+    --surface: oklch(1 0 0);
+    --ink: oklch(0.235 0.014 40);
+    --ink-soft: oklch(0.42 0.013 40);
+    --muted: oklch(0.505 0.011 45);
+    --line: oklch(0.905 0.006 60);
+    --line-strong: oklch(0.845 0.008 60);
+    --accent: oklch(0.545 0.185 27);
+    --accent-hover: oklch(0.485 0.185 27);
+    --accent-soft: oklch(0.966 0.021 30);
+    --danger: oklch(0.49 0.16 22);
+    --danger-soft: oklch(0.968 0.019 25);
+    --radius: 10px;
+    --ease: cubic-bezier(.2, .8, .2, 1);
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-feature-settings: "tnum" 1;
+  }
+  h1, h2, h3, p, dl, dd { margin: 0; }
+  button, input { font: inherit; color: inherit; }
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+
+  .wrap { width: min(1180px, 100%); margin: 0 auto; padding: 0 24px; }
+
+  /* masthead */
+  .masthead {
+    display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between;
+    gap: 16px 40px; padding: 32px 0 20px;
+    border-bottom: 1px solid var(--line);
+  }
+  .brand { display: flex; align-items: center; gap: 11px; }
+  .brand svg { display: block; color: var(--accent); }
+  .brand h1 {
+    font-size: 1.25rem; font-weight: 640; letter-spacing: -0.018em;
+  }
+  .brand p { color: var(--muted); font-size: 0.8125rem; margin-top: 1px; }
+
+  .specs { display: flex; flex-wrap: wrap; gap: 10px 26px; }
+  .specs div { display: flex; flex-direction: column; gap: 1px; }
+  .specs dt {
+    font-size: 0.6875rem; letter-spacing: 0.07em; text-transform: uppercase;
+    color: var(--muted);
+  }
+  .specs dd { font-size: 0.875rem; font-weight: 550; letter-spacing: -0.005em; }
+
+  /* import */
+  .import { padding: 28px 0 0; }
+  .import label {
+    display: block; font-size: 0.8125rem; font-weight: 600; color: var(--ink-soft);
+    margin-bottom: 7px;
+  }
+  .field { display: flex; gap: 8px; }
+  .field input {
+    flex: 1; min-width: 0; height: 46px; padding: 0 14px;
+    font-size: 16px; font-variant-numeric: tabular-nums;
+    background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius);
+    transition: border-color .14s var(--ease), box-shadow .14s var(--ease);
+  }
+  .field input::placeholder { color: oklch(0.66 0.01 45); }
+  .field input:hover { border-color: oklch(0.76 0.01 50); }
+  .field input:focus-visible {
+    outline: none; border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .hint { margin-top: 8px; color: var(--muted); font-size: 0.8125rem; }
+  .hint code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.78125rem; color: var(--ink-soft);
+    background: oklch(0.955 0.005 70); padding: 1px 5px; border-radius: 4px;
+  }
+
+  button { cursor: pointer; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    height: 46px; padding: 0 20px; border-radius: var(--radius);
+    border: 1px solid transparent; font-size: 0.9375rem; font-weight: 600;
+    letter-spacing: -0.006em; white-space: nowrap;
+    transition: background-color .14s var(--ease), border-color .14s var(--ease), transform .1s var(--ease);
+  }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .btn:active:not(:disabled) { transform: translateY(1px); }
+  .btn-primary { background: var(--accent); color: oklch(0.99 0.008 60); }
+  .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+  .btn-dark { background: var(--ink); color: oklch(0.99 0.004 60); }
+  .btn-dark:hover:not(:disabled) { background: oklch(0.32 0.015 40); }
+  .btn-quiet {
+    background: var(--surface); border-color: var(--line-strong); color: var(--ink);
+  }
+  .btn-quiet:hover:not(:disabled) { background: oklch(0.972 0.004 70); border-color: oklch(0.8 0.01 50); }
+  .btn:disabled { opacity: .6; cursor: progress; }
+
+  /* error */
+  .alert {
+    display: flex; gap: 12px; align-items: flex-start;
+    margin-top: 20px; padding: 13px 15px; border-radius: var(--radius);
+    background: var(--danger-soft); border: 1px solid oklch(0.9 0.035 25);
+    color: var(--danger); font-size: 0.875rem;
+  }
+  .alert[hidden] { display: none; }
+  .alert strong { display: block; font-weight: 600; color: oklch(0.4 0.14 22); }
+  .alert span { color: oklch(0.48 0.09 25); }
+
+  /* deck panel */
+  .deck { margin-top: 26px; }
+  .deck[hidden] { display: none; }
+  .panel {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+    box-shadow: 0 1px 2px oklch(0.4 0.02 40 / 0.04);
+    padding: 20px 22px;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 18px 28px;
+    animation: rise .24s var(--ease) both;
+  }
+  .panel .lead { flex: 1 1 320px; min-width: 0; }
+  .panel h2 {
+    font-size: 1.0625rem; font-weight: 640; letter-spacing: -0.012em;
+    overflow-wrap: anywhere;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 9px; border-radius: 999px;
+    background: oklch(0.962 0.004 70); border: 1px solid var(--line);
+    color: var(--ink-soft); font-size: 0.75rem; font-weight: 550;
+  }
+  .chip.code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.02em; }
+  .chip .dot {
+    width: 5px; height: 5px; border-radius: 50%; background: var(--accent);
+  }
+
+  .tally { display: flex; gap: 24px; }
+  .tally div { display: flex; flex-direction: column; gap: 1px; }
+  .tally .val { font-size: 1.375rem; font-weight: 650; letter-spacing: -0.02em; line-height: 1.2; }
+  .tally .lbl {
+    font-size: 0.6875rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted);
+  }
+
+  .actions { display: flex; flex-direction: column; align-items: stretch; gap: 7px; }
+  .saved { font-size: 0.75rem; color: var(--muted); text-align: right; }
+  .saved:empty { display: none; }
+
+  /* progress */
+  .progress { margin-top: 14px; }
+  .progress[hidden] { display: none; }
+  .progress-track {
+    height: 3px; border-radius: 2px; background: oklch(0.93 0.006 60); overflow: hidden;
+  }
+  .progress-bar {
+    height: 100%; width: 38%; border-radius: 2px; background: var(--accent);
+    animation: slide 1.15s var(--ease) infinite;
+  }
+  .progress p { margin-top: 7px; font-size: 0.8125rem; color: var(--muted); }
+
+  /* sheets */
+  .sheets { margin-top: 32px; }
+  .sheets[hidden] { display: none; }
+  .section-head {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
+    padding-bottom: 12px; border-bottom: 1px solid var(--line);
+  }
+  .section-head h2 {
+    font-size: 0.6875rem; letter-spacing: 0.07em; text-transform: uppercase;
+    color: var(--muted); font-weight: 600;
+  }
+  .head-tools { display: flex; align-items: baseline; gap: 14px; }
+  .section-head .meta { font-size: 0.8125rem; color: var(--muted); }
+  .link-btn {
+    padding: 0; border: 0; background: none; color: var(--accent);
+    font-size: 0.8125rem; font-weight: 550; text-decoration: underline;
+    text-underline-offset: 2px; border-radius: 3px;
+  }
+  .link-btn:hover { color: var(--accent-hover); }
+  .link-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .link-btn[hidden] { display: none; }
+
+  .grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+    gap: 20px 16px; padding-top: 20px;
+  }
+  .tile { min-width: 0; animation: rise .22s var(--ease) both; animation-delay: calc(var(--i, 0) * 18ms); }
+  .tile .art {
+    position: relative; display: block; aspect-ratio: 59 / 86;
+    border-radius: 7px; overflow: hidden; background: oklch(0.94 0.005 60);
+    box-shadow: 0 1px 2px oklch(0.4 0.02 40 / 0.10);
+    transition: transform .16s var(--ease), box-shadow .16s var(--ease);
+  }
+  .tile .art:hover { transform: translateY(-2px); box-shadow: 0 6px 16px oklch(0.4 0.02 40 / 0.16); }
+  .tile img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .tile.rotated img {
+    position: absolute; top: 50%; left: 50%;
+    width: calc(100% * 86 / 59); height: calc(100% * 59 / 86);
+    transform: translate(-50%, -50%) rotate(90deg);
+  }
+  .copies { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+  .step {
+    width: 30px; height: 30px; display: grid; place-items: center;
+    border: 1px solid var(--line-strong); border-radius: 7px; background: var(--surface);
+    color: var(--ink); font-size: 1rem; line-height: 1;
+    transition: background-color .12s var(--ease), border-color .12s var(--ease);
+  }
+  .step:hover:not(:disabled) { background: oklch(0.965 0.004 70); border-color: oklch(0.78 0.01 50); }
+  .step:active:not(:disabled) { transform: translateY(1px); }
+  .step:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .step:disabled { opacity: .35; cursor: default; }
+  .copies .count {
+    min-width: 16px; text-align: center; font-size: 0.875rem; font-weight: 650;
+    font-variant-numeric: tabular-nums; color: var(--ink);
+  }
+  .tile.is-off .art { opacity: .3; }
+  .tile.is-off .card-name { opacity: .55; }
+  .tile.is-off .count { color: var(--muted); }
+  .tile .card-name {
+    margin-top: 7px; font-size: 0.75rem; line-height: 1.4; color: var(--ink-soft);
+    min-height: 2.8em;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+
+  /* skeleton */
+  .skeleton .art {
+    background: linear-gradient(100deg, oklch(0.945 0.004 60) 30%, oklch(0.965 0.004 60) 46%, oklch(0.945 0.004 60) 62%);
+    background-size: 280% 100%;
+    animation: shimmer 1.4s linear infinite;
+  }
+  .skeleton .card-name { height: 26px; }
+
+  /* empty */
+  .empty {
+    margin-top: 32px; padding: 34px 26px; border: 1px dashed var(--line-strong);
+    border-radius: 14px; background: oklch(0.995 0.002 70);
+  }
+  .empty h2 { font-size: 0.9375rem; font-weight: 620; letter-spacing: -0.01em; }
+  .empty p { margin-top: 6px; color: var(--muted); font-size: 0.875rem; max-width: 46ch; }
+  .empty .btn { margin-top: 16px; height: 38px; padding: 0 14px; font-size: 0.8125rem; }
+  .empty[hidden] { display: none; }
+
+  .foot {
+    margin-top: 40px; padding: 18px 0 56px; border-top: 1px solid var(--line);
+    font-size: 0.8125rem; color: var(--muted); max-width: 76ch;
+  }
+  .foot b { color: var(--ink-soft); font-weight: 600; }
+
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @keyframes shimmer { from { background-position: 130% 0; } to { background-position: -30% 0; } }
+  @keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(340%); } }
+
+  @media (max-width: 720px) {
+    .wrap { padding: 0 18px; }
+    .masthead { padding-top: 24px; }
+    .panel { padding: 18px; }
+    .tally { gap: 20px; }
+    .actions, .actions .btn { width: 100%; }
+    .saved { text-align: center; }
+  }
+  @media (max-width: 560px) {
+    .field { flex-direction: column; }
+    .field .btn { width: 100%; }
+    .grid { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 16px 12px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    .progress-bar { width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="masthead">
+    <div class="brand">
+      <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true">
+        <rect x="1.25" y="1.25" width="23.5" height="23.5" rx="5" stroke="currentColor" stroke-width="1.5"/>
+        <rect x="6" y="6" width="5.5" height="8" rx="1.2" fill="currentColor" opacity=".9"/>
+        <rect x="14.5" y="6" width="5.5" height="8" rx="1.2" fill="currentColor" opacity=".55"/>
+        <rect x="6" y="17" width="5.5" height="3" rx="1.2" fill="currentColor" opacity=".55"/>
+        <rect x="14.5" y="17" width="5.5" height="3" rx="1.2" fill="currentColor" opacity=".3"/>
+      </svg>
+      <div>
+        <h1>Decklist Printer</h1>
+        <p>A DeckLog deck, ready to print at card size.</p>
+      </div>
+    </div>
+    <dl class="specs">
+      <div><dt>Sheet</dt><dd>A4</dd></div>
+      <div><dt>Grid</dt><dd>3 × 3</dd></div>
+      <div><dt>Card</dt><dd>59 × 86 mm</dd></div>
+      <div><dt>Output</dt><dd>450 dpi</dd></div>
+    </dl>
+  </header>
+
+  <main>
+    <form class="import" id="load" novalidate>
+      <label for="code">Deck code or link</label>
+      <div class="field">
+        <input id="code" type="text" inputmode="text" autocomplete="off" spellcheck="false"
+               placeholder="6ZGG1" aria-describedby="hint">
+        <button class="btn btn-dark" type="submit">Load deck</button>
+      </div>
+      <p class="hint" id="hint">
+        Paste a link like <code>decklog-en.bushiroad.com/view/6ZGG1</code>, or just the code.
+      </p>
+    </form>
+
+    <div class="alert" id="alert" role="alert" hidden>
+      <div>
+        <strong id="alert-title"></strong>
+        <span id="alert-body"></span>
+      </div>
+    </div>
+
+    <section class="deck" id="deck" hidden aria-label="Deck">
+      <div class="panel">
+        <div class="lead">
+          <h2 id="deck-title"></h2>
+          <div class="chips" id="deck-chips"></div>
+        </div>
+        <div class="tally">
+          <div><span class="val" id="stat-cards">0</span><span class="lbl">Cards</span></div>
+          <div><span class="val" id="stat-pages">0</span><span class="lbl">Pages</span></div>
+        </div>
+        <div class="actions">
+          <button class="btn btn-primary" type="button" id="download">Download PDF</button>
+          <p class="saved" id="saved"></p>
+        </div>
+      </div>
+      <div class="progress" id="progress" hidden>
+        <div class="progress-track"><div class="progress-bar"></div></div>
+        <p id="progress-text">Building pages from card art. This takes about 5 to 10 seconds.</p>
+      </div>
+    </section>
+
+    <section class="sheets" id="sheets" hidden aria-label="Deck contents">
+      <div class="section-head">
+        <h2>Cards</h2>
+        <div class="head-tools">
+          <span class="meta" id="sheets-meta"></span>
+          <button class="link-btn" type="button" id="reset" hidden>Reset copies</button>
+        </div>
+      </div>
+      <div class="grid" id="grid"></div>
+    </section>
+
+    <div class="empty" id="empty">
+      <h2>No deck loaded</h2>
+      <p>Load a published DeckLog deck and every copy is laid out on A4 at 59 × 86 mm, nine per page.</p>
+      <button class="btn btn-quiet" type="button" id="example">Try deck 6ZGG1</button>
+    </div>
+
+    <p class="foot" id="foot" hidden>
+      Print at <b>100%</b> and turn off “fit to page”, or cards come out the wrong size.
+      Art comes from the official card database at 350 × 510 px and is upscaled 3× to 450 dpi.
+      Upscaling sharpens edges but cannot add detail. The crest is a landscape card, so it prints rotated.
+    </p>
+  </main>
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const form = $("load");
+  const input = $("code");
+  const loadBtn = form.querySelector("button");
+  const alert_ = $("alert");
+  const deckSection = $("deck");
+  const sheets = $("sheets");
+  const grid = $("grid");
+  const empty = $("empty");
+  const foot = $("foot");
+  const downloadBtn = $("download");
+  const progress = $("progress");
+  const progressText = $("progress-text");
+  const saved = $("saved");
+  const status = document.createElement("p");
+  status.className = "sr-only";
+  status.setAttribute("aria-live", "polite");
+  document.body.append(status);
+
+  const REGULATION = { D: "Standard", V: "V-Premium", P: "Premium", O: "Other" };
+  let current = null;
+  let cardsView = [];
+  let counts = [];
+  let baseCounts = [];
+  let building = false;
+
+  function announce(text) { status.textContent = ""; requestAnimationFrame(() => { status.textContent = text; }); }
+
+  function showError(title, body) {
+    $("alert-title").textContent = title;
+    $("alert-body").textContent = body;
+    alert_.hidden = false;
+    announce(title);
+  }
+
+  function resetView() {
+    alert_.hidden = true;
+    deckSection.hidden = true;
+    sheets.hidden = true;
+    empty.hidden = true;
+    foot.hidden = true;
+    saved.textContent = "";
+    progress.hidden = true;
+    current = null;
+    cardsView = [];
+    counts = [];
+    baseCounts = [];
+  }
+
+  function skeletons(count) {
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < count; i++) {
+      const tile = document.createElement("div");
+      tile.className = "tile skeleton";
+      tile.style.setProperty("--i", 0);
+      tile.innerHTML = '<div class="art"></div><div class="card-name"></div>';
+      frag.append(tile);
+    }
+    grid.replaceChildren(frag);
+    sheets.hidden = false;
+    $("sheets-meta").textContent = "Reading deck…";
+  }
+
+  function chip(text, kind) {
+    const el = document.createElement("span");
+    el.className = kind ? "chip " + kind : "chip";
+    if (kind === "code") {
+      el.innerHTML = '<span class="dot"></span>';
+      el.append(document.createTextNode(text));
+    } else {
+      el.textContent = text;
+    }
+    return el;
+  }
+
+  function render(deck) {
+    current = deck.code;
+    cardsView = deck.cards;
+    counts = deck.cards.map((card) => card.num);
+    baseCounts = [...counts];
+    $("deck-title").textContent = deck.title || deck.code;
+    const chips = $("deck-chips");
+    chips.replaceChildren(
+      chip(deck.code, "code"),
+      ...[REGULATION[deck.regulation] || deck.regulation, deck.nation].filter(Boolean).map((v) => chip(v))
+    );
+    deckSection.hidden = false;
+    foot.hidden = false;
+    document.title = deck.title ? `${deck.title} · Decklist Printer` : "Decklist Printer";
+
+    const frag = document.createDocumentFragment();
+    deck.cards.forEach((card, i) => {
+      const tile = document.createElement("div");
+      tile.className = "tile";
+      tile.style.setProperty("--i", Math.min(i, 11));
+      if (card.landscape) tile.classList.add("rotated");
+
+      const art = document.createElement("div");
+      art.className = "art";
+      const img = document.createElement("img");
+      img.src = card.image;
+      img.alt = "";
+      img.loading = "lazy";
+      img.decoding = "async";
+      art.append(img);
+
+      const name = document.createElement("div");
+      name.className = "card-name";
+      name.textContent = card.name;
+
+      const copies = document.createElement("div");
+      copies.className = "copies";
+      copies.setAttribute("role", "group");
+      copies.setAttribute("aria-label", `Copies of ${card.name}`);
+
+      const less = document.createElement("button");
+      less.type = "button";
+      less.className = "step";
+      less.dataset.step = "-1";
+      less.textContent = "−";
+      less.setAttribute("aria-label", `Print one fewer copy of ${card.name}`);
+
+      const count = document.createElement("span");
+      count.className = "count";
+
+      const more = document.createElement("button");
+      more.type = "button";
+      more.className = "step";
+      more.dataset.step = "1";
+      more.textContent = "+";
+      more.setAttribute("aria-label", `Print one more copy of ${card.name}`);
+
+      copies.append(less, count, more);
+      copies.addEventListener("click", (event) => {
+        const button = event.target.closest("button[data-step]");
+        if (!button) return;
+        setCount(i, counts[i] + Number(button.dataset.step));
+      });
+
+      tile.append(art, name, copies);
+      frag.append(tile);
+    });
+    grid.replaceChildren(frag);
+
+    cardsView.forEach((card, i) => syncTile(i));
+    updateTotals();
+    announce(`Loaded ${deck.total} cards across ${deck.pages} pages.`);
+  }
+
+  function syncTile(index) {
+    const tile = grid.children[index];
+    if (!tile) return;
+    tile.classList.toggle("is-off", counts[index] === 0);
+    tile.querySelector(".count").textContent = counts[index];
+    tile.querySelector('[data-step="-1"]').disabled = counts[index] === 0;
+    tile.querySelector('[data-step="1"]').disabled = counts[index] >= cardsView[index].num;
+  }
+
+  function setCount(index, value) {
+    counts[index] = Math.max(0, Math.min(cardsView[index].num, value));
+    saved.textContent = "";
+    syncTile(index);
+    updateTotals();
+  }
+
+  function updateTotals() {
+    const total = counts.reduce((sum, n) => sum + n, 0);
+    $("stat-cards").textContent = total;
+    $("stat-pages").textContent = Math.ceil(total / 9);
+    $("sheets-meta").textContent = `${cardsView.length} entries · ${total} selected`;
+    downloadBtn.disabled = total === 0 || building;
+    downloadBtn.title = total === 0 ? "Select at least one card to print" : "";
+    $("reset").hidden = !counts.some((n, i) => n !== baseCounts[i]);
+  }
+
+  async function load(code) {
+    if (!code.trim()) {
+      showError("Enter a deck code", "Paste a DeckLog link or its code, for example 6ZGG1.");
+      input.focus();
+      return;
+    }
+    resetView();
+    loadBtn.disabled = true;
+    loadBtn.textContent = "Loading…";
+    skeletons(9);
+    announce("Reading deck.");
+    try {
+      const res = await fetch("/api/deck?code=" + encodeURIComponent(code));
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "That deck could not be read.");
+      render(data);
+      history.replaceState(null, "", "?code=" + encodeURIComponent(data.code));
+    } catch (error) {
+      sheets.hidden = true;
+      empty.hidden = false;
+      showError(
+        error.message || "That deck could not be read.",
+        "Check the code, and make sure the deck is published on DeckLog."
+      );
+    } finally {
+      loadBtn.disabled = false;
+      loadBtn.textContent = "Load deck";
+    }
+  }
+
+  async function download() {
+    if (!current || building) return;
+    building = true;
+    downloadBtn.disabled = true;
+    downloadBtn.textContent = "Building…";
+    saved.textContent = "";
+    progress.hidden = false;
+    progressText.textContent = "Building pages from card art. This takes about 5 to 10 seconds.";
+    announce("Building the PDF.");
+    try {
+      const res = await fetch("/api/pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: current, counts }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "The PDF could not be built.");
+      }
+      const blob = await res.blob();
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `deck-${current}.pdf`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+      const mb = (blob.size / 1048576).toFixed(1);
+      saved.textContent = `Saved deck-${current}.pdf · ${mb} MB`;
+      announce("PDF saved.");
+    } catch (error) {
+      showError(error.message || "The PDF could not be built.", "Try again; nothing was downloaded.");
+    } finally {
+      building = false;
+      downloadBtn.textContent = "Download PDF";
+      progress.hidden = true;
+      updateTotals();
+    }
+  }
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    load(input.value);
+  });
+  downloadBtn.addEventListener("click", download);
+  $("reset").addEventListener("click", () => {
+    counts = [...baseCounts];
+    saved.textContent = "";
+    cardsView.forEach((card, i) => syncTile(i));
+    updateTotals();
+    announce("Copies reset to the deck list.");
+  });
+  $("example").addEventListener("click", () => {
+    input.value = "6ZGG1";
+    load("6ZGG1");
+  });
+
+  const initial = new URLSearchParams(location.search).get("code");
+  if (initial) {
+    input.value = initial;
+    load(initial);
+  }
+</script>
+</body>
+</html>
