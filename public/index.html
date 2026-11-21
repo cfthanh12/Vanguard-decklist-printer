@@ -334,7 +334,8 @@
   .search-actions .btn { height: 38px; padding: 0 14px; }
   .result-grid {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 10px;
-    margin-top: 14px;
+    max-height: min(65vh, 680px); margin-top: 14px;
+    overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable;
   }
   .result-card {
     position: relative; border: 1px solid var(--line); border-radius: 9px; overflow: hidden;

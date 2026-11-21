@@ -105,6 +105,7 @@ test("deck list is beside search and the custom-card form stays compact", () => 
   const html = fs.readFileSync(path.join(process.cwd(), "public/index.html"), "utf8");
   assert.match(html, /\.custom-form\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+minmax\(0,\s*1fr\)\s+auto;/s);
   assert.match(html, /\.custom-form \.btn\s*\{[^}]*height:\s*38px;[^}]*padding:\s*0 12px;/s);
+  assert.match(html, /\.result-grid\s*\{[^}]*max-height:\s*[^;]+;[^}]*overflow-y:\s*auto;/s);
   const deckPane = html.indexOf('class="deck-pane"');
   const sheets = html.indexOf('<section class="sheets" id="sheets"');
   const searchPane = html.indexOf('class="search-pane"');
