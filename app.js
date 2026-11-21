@@ -3,6 +3,9 @@ import { PDFDocument } from "pdf-lib";
 import { Jimp, ResizeStrategy } from "jimp";
 import jpeg from "jpeg-js";
 
+import { parseDeckCode, fetchDeck, deckCards, applyCounts } from "./decklog.js";
+import { HttpError } from "./errors.js";
+
 const DECKLOG_VIEW = "https://decklog-en.bushiroad.com/system/app/api/view/";
 const IMAGE_BASE = "https://en.cf-vanguard.com/wordpress/wp-content/images/cardlist/";
 const USER_AGENT =
@@ -23,63 +26,6 @@ const IMAGE_PATH = /^[A-Za-z0-9_-]+\/[A-Za-z0-9_.-]+\.(png|jpe?g)$/;
 
 const imageCache = new Map();
 const rawCache = new Map();
-
-class HttpError extends Error {
-  constructor(status, message) {
-    super(message);
-    this.status = status;
-  }
-}
-
-function parseDeckCode(input) {
-  const raw = String(input ?? "").trim();
-  const fromUrl = raw.match(/\/view\/([A-Za-z0-9_-]{1,10})/i);
-  const code = (fromUrl ? fromUrl[1] : raw).toUpperCase();
-  if (!/^[A-Z0-9_-]{1,10}$/.test(code)) {
-    throw new HttpError(400, "Enter a DeckLog deck code or deck URL.");
-  }
-  return code;
-}
-
-async function fetchDeck(code) {
-  let res;
-  try {
-    res = await fetch(DECKLOG_VIEW + encodeURIComponent(code), {
-      method: "POST",
-      headers: {
-        "User-Agent": USER_AGENT,
-        Referer: `https://decklog-en.bushiroad.com/view/${code}`,
-        "X-Requested-With": "XMLHttpRequest",
-        Accept: "application/json",
-      },
-      signal: AbortSignal.timeout(20000),
-    });
-  } catch {
-    throw new HttpError(502, "Could not reach DeckLog. Check your internet connection.");
-  }
-  if (!res.ok) throw new HttpError(502, `DeckLog returned ${res.status}.`);
-  const body = await res.json().catch(() => null);
-  if (!body || !body.id) {
-    throw new HttpError(404, `Deck ${code} not found or not public.`);
-  }
-  return body;
-}
-
-function deckCards(deck) {
-  const cards = [];
-  for (const card of [...(deck.p_list || []), ...(deck.list || [])]) {
-    const num = Number(card.num) || 0;
-    if (!num || !card.img) continue;
-    cards.push({
-      card_number: card.card_number,
-      name: card.name || card.card_name || card.card_number,
-      num,
-      img: card.img,
-      landscape: Number(card.width) > Number(card.height),
-    });
-  }
-  return cards;
-}
 
 async function fetchImage(img) {
   const cached = rawCache.get(img);
@@ -139,18 +85,6 @@ async function mapLimit(items, limit, fn) {
     while (queue.length) await fn(queue.shift());
   });
   await Promise.all(workers);
-}
-
-function applyCounts(cards, counts) {
-  if (counts === undefined) return cards;
-  if (!Array.isArray(counts) || counts.length !== cards.length) {
-    throw new HttpError(409, "This deck changed. Reload it and try again.");
-  }
-  return cards.map((card, index) => {
-    const requested = Number(counts[index]);
-    if (!Number.isFinite(requested)) throw new HttpError(400, "Copies must be numbers.");
-    return { ...card, num: Math.max(0, Math.min(card.num, Math.trunc(requested))) };
-  });
 }
 
 export function createApp({ html }) {
