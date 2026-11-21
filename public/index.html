@@ -250,6 +250,63 @@
   .empty .btn { margin-top: 16px; height: 38px; padding: 0 14px; font-size: 0.8125rem; }
   .empty[hidden] { display: none; }
 
+  /* library */
+  .layout {
+    display: grid; grid-template-columns: 264px minmax(0, 1fr);
+    gap: 28px; margin-top: 28px; align-items: start;
+  }
+  .sidebar { position: sticky; top: 16px; }
+  .sidebar-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    margin-bottom: 12px;
+  }
+  .sidebar-head h2 {
+    font-size: 0.6875rem; letter-spacing: 0.07em; text-transform: uppercase;
+    color: var(--muted); font-weight: 600;
+  }
+  .sidebar-head .btn { height: 32px; padding: 0 12px; font-size: 0.8125rem; border-radius: 8px; }
+  .sidebar-empty {
+    margin: 0; padding: 14px; border: 1px dashed var(--line-strong);
+    border-radius: 12px; color: var(--muted); font-size: 0.8125rem;
+    background: oklch(0.995 0.002 70);
+  }
+  .sidebar-empty[hidden] { display: none; }
+  .deck-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .deck-item {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+    padding: 9px 11px;
+  }
+  .deck-item.is-active { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .deck-open {
+    display: block; width: 100%; padding: 2px 0; border: 0; background: none;
+    text-align: left; font-weight: 600; font-size: 0.875rem; letter-spacing: -0.005em;
+    color: var(--ink); overflow-wrap: anywhere; border-radius: 4px;
+  }
+  .deck-open:hover { color: var(--accent); }
+  .deck-open:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .deck-actions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+  .mini {
+    padding: 2px 9px; border-radius: 999px; border: 1px solid var(--line);
+    background: oklch(0.962 0.004 70); color: var(--ink-soft);
+    font-size: 0.71875rem; font-weight: 550; line-height: 1.5;
+    transition: background-color .12s var(--ease), border-color .12s var(--ease);
+  }
+  .mini:hover { background: oklch(0.95 0.004 70); border-color: var(--line-strong); color: var(--ink); }
+  .mini.danger { color: var(--danger); }
+  .mini.danger:hover { background: var(--danger-soft); border-color: oklch(0.9 0.035 25); }
+  .deck-name {
+    width: 100%; max-width: 560px; height: 38px; padding: 0 12px;
+    font-size: 1.0625rem; font-weight: 640; letter-spacing: -0.012em;
+    background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px;
+    transition: border-color .14s var(--ease), box-shadow .14s var(--ease);
+  }
+  .deck-name:hover { border-color: oklch(0.76 0.01 50); }
+  .deck-name:focus-visible {
+    outline: none; border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .deck-name[hidden] { display: none; }
+
   .foot {
     margin-top: 40px; padding: 18px 0 56px; border-top: 1px solid var(--line);
     font-size: 0.8125rem; color: var(--muted); max-width: 76ch;
@@ -272,6 +329,10 @@
     .field { flex-direction: column; }
     .field .btn { width: 100%; }
     .grid { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 16px 12px; }
+  }
+  @media (max-width: 880px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { position: static; }
   }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
@@ -303,7 +364,17 @@
     </dl>
   </header>
 
-  <main>
+  <div class="layout">
+    <aside class="sidebar" aria-label="My decks">
+      <div class="sidebar-head">
+        <h2>My decks</h2>
+        <button class="btn btn-quiet" type="button" id="new-deck">New</button>
+      </div>
+      <p class="sidebar-empty" id="sidebar-empty" hidden>No decks yet. Click New to start.</p>
+      <ul class="deck-list" id="deck-list"></ul>
+    </aside>
+
+    <main>
     <form class="import" id="load" novalidate>
       <label for="code">Deck code or link</label>
       <div class="field">
@@ -327,6 +398,8 @@
       <div class="panel">
         <div class="lead">
           <h2 id="deck-title"></h2>
+          <input id="deck-name" class="deck-name" type="text" hidden
+                 placeholder="Deck name" aria-label="Deck name" spellcheck="false">
           <div class="chips" id="deck-chips"></div>
         </div>
         <div class="tally">
@@ -366,7 +439,8 @@
       Art comes from the official card database at 350 × 510 px and is upscaled 3× to 450 dpi.
       Upscaling sharpens edges but cannot add detail. The crest is a landscape card, so it prints rotated.
     </p>
-  </main>
+    </main>
+  </div>
 </div>
 
 <script>
@@ -384,6 +458,10 @@
   const progress = $("progress");
   const progressText = $("progress-text");
   const saved = $("saved");
+  const deckNameInput = $("deck-name");
+  const deckList = $("deck-list");
+  const sidebarEmpty = $("sidebar-empty");
+  const newDeckBtn = $("new-deck");
   const status = document.createElement("p");
   status.className = "sr-only";
   status.setAttribute("aria-live", "polite");
@@ -395,6 +473,11 @@
   let counts = [];
   let baseCounts = [];
   let building = false;
+  let library = [];
+  let currentDeck = null;
+  let dirty = false;
+  let saveTimer = null;
+  let saveVersion = 0;
 
   function announce(text) { status.textContent = ""; requestAnimationFrame(() => { status.textContent = text; }); }
 
@@ -414,9 +497,300 @@
     saved.textContent = "";
     progress.hidden = true;
     current = null;
+    currentDeck = null;
+    dirty = false;
+    clearTimeout(saveTimer);
     cardsView = [];
     counts = [];
     baseCounts = [];
+    deckNameInput.hidden = true;
+    deckNameInput.value = "";
+    $("deck-title").hidden = false;
+  }
+
+  function setSaveState() {
+    if (!currentDeck) { saved.textContent = ""; return; }
+    saved.textContent = dirty ? "Saving…" : "Saved";
+  }
+
+  function markDirty() {
+    dirty = true;
+    saveVersion += 1;
+    setSaveState();
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(autosave, 500);
+  }
+
+  function renderLibrary() {
+    const frag = document.createDocumentFragment();
+    for (const deck of library) {
+      const li = document.createElement("li");
+      li.className = "deck-item";
+      if (currentDeck && currentDeck.id === deck.id) li.classList.add("is-active");
+
+      const open = document.createElement("button");
+      open.type = "button";
+      open.className = "deck-open";
+      open.textContent = deck.name || "Untitled deck";
+      open.addEventListener("click", () => openDeck(deck.id));
+
+      const actions = document.createElement("div");
+      actions.className = "deck-actions";
+
+      const rename = document.createElement("button");
+      rename.type = "button";
+      rename.className = "mini";
+      rename.textContent = "Rename";
+      rename.addEventListener("click", () => {
+        const name = prompt("Rename deck", deck.name || "");
+        if (name !== null) renameDeck(deck.id, name);
+      });
+
+      const duplicate = document.createElement("button");
+      duplicate.type = "button";
+      duplicate.className = "mini";
+      duplicate.textContent = "Duplicate";
+      duplicate.addEventListener("click", () => duplicateDeck(deck.id));
+
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "mini danger";
+      remove.textContent = "Delete";
+      remove.addEventListener("click", () => deleteDeck(deck.id));
+
+      actions.append(rename, duplicate, remove);
+      li.append(open, actions);
+      frag.append(li);
+    }
+    deckList.replaceChildren(frag);
+    sidebarEmpty.hidden = library.length > 0;
+  }
+
+  async function loadLibrary() {
+    try {
+      const res = await fetch("/api/decks");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not load decks.");
+      library = data.decks || [];
+    } catch (error) {
+      library = [];
+      showError("Could not load decks.", error.message || String(error));
+    }
+    renderLibrary();
+  }
+
+  async function openDeck(id) {
+    try {
+      const res = await fetch("/api/decks/" + encodeURIComponent(id));
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not open deck.");
+      currentDeck = data;
+      dirty = false;
+      renderLibraryDeck(data);
+      renderLibrary();
+    } catch (error) {
+      showError("Could not open deck.", error.message || String(error));
+    }
+  }
+
+  function libraryCardImage(deck, card) {
+    if (card.source === "custom" && card.image) {
+      const file = String(card.image).split("/").pop();
+      return "/api/deck-image/" + encodeURIComponent(deck.id) + "/" + encodeURIComponent(file);
+    }
+    if (card.picture) return "/api/image?src=" + encodeURIComponent(card.picture);
+    return "";
+  }
+
+  function renderLibraryDeck(deck) {
+    alert_.hidden = true;
+    empty.hidden = true;
+    progress.hidden = true;
+    deckSection.hidden = false;
+    sheets.hidden = false;
+    foot.hidden = false;
+
+    currentDeck = deck;
+    current = null;
+    dirty = false;
+    const cards = deck.cards || [];
+    cardsView = cards.map((card) => ({ ...card, num: card.count ?? 1 }));
+    counts = cardsView.map((card) => card.num);
+    baseCounts = [...counts];
+
+    $("deck-title").hidden = true;
+    deckNameInput.hidden = false;
+    deckNameInput.value = deck.name || "";
+
+    const chips = $("deck-chips");
+    chips.replaceChildren(chip(`${cards.length} card${cards.length === 1 ? "" : "s"}`));
+
+    document.title = deck.name ? `${deck.name} · Decklist Printer` : "Decklist Printer";
+
+    const frag = document.createDocumentFragment();
+    cards.forEach((card, i) => {
+      const tile = document.createElement("div");
+      tile.className = "tile";
+      tile.style.setProperty("--i", Math.min(i, 11));
+      if (card.landscape) tile.classList.add("rotated");
+
+      const art = document.createElement("div");
+      art.className = "art";
+      const img = document.createElement("img");
+      img.src = libraryCardImage(deck, card);
+      img.alt = "";
+      img.loading = "lazy";
+      img.decoding = "async";
+      art.append(img);
+
+      const name = document.createElement("div");
+      name.className = "card-name";
+      name.textContent = card.name || "";
+
+      const copies = document.createElement("div");
+      copies.className = "copies";
+      copies.setAttribute("role", "group");
+      copies.setAttribute("aria-label", `Copies of ${card.name || "card"}`);
+
+      const less = document.createElement("button");
+      less.type = "button";
+      less.className = "step";
+      less.dataset.step = "-1";
+      less.textContent = "−";
+      less.setAttribute("aria-label", `Print one fewer copy of ${card.name || "card"}`);
+
+      const count = document.createElement("span");
+      count.className = "count";
+
+      const more = document.createElement("button");
+      more.type = "button";
+      more.className = "step";
+      more.dataset.step = "1";
+      more.textContent = "+";
+      more.setAttribute("aria-label", `Print one more copy of ${card.name || "card"}`);
+
+      copies.append(less, count, more);
+      copies.addEventListener("click", (event) => {
+        const button = event.target.closest("button[data-step]");
+        if (!button) return;
+        setCount(i, counts[i] + Number(button.dataset.step));
+      });
+
+      tile.append(art, name, copies);
+      frag.append(tile);
+    });
+    grid.replaceChildren(frag);
+
+    cardsView.forEach((card, i) => syncTile(i));
+    updateTotals();
+    setSaveState();
+    announce(`Opened ${deck.name || "deck"}${cards.length ? ` with ${cards.length} cards` : ""}.`);
+  }
+
+  async function newDeck(name) {
+    const trimmed = String(name || "").trim();
+    if (!trimmed) return;
+    try {
+      const res = await fetch("/api/decks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmed }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not create deck.");
+      await loadLibrary();
+      await openDeck(data.id);
+    } catch (error) {
+      showError("Could not create deck.", error.message || String(error));
+    }
+  }
+
+  async function renameDeck(id, name) {
+    const trimmed = String(name || "").trim();
+    if (!trimmed) return;
+    try {
+      const res = await fetch("/api/decks/" + encodeURIComponent(id));
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not open deck.");
+      data.name = trimmed;
+      const put = await fetch("/api/decks/" + encodeURIComponent(id), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const savedDeck = await put.json().catch(() => ({}));
+      if (!put.ok) throw new Error(savedDeck.error || "Could not rename deck.");
+      if (currentDeck && currentDeck.id === id) {
+        currentDeck = savedDeck;
+        dirty = false;
+        renderLibraryDeck(savedDeck);
+      }
+      await loadLibrary();
+    } catch (error) {
+      showError("Could not rename deck.", error.message || String(error));
+    }
+  }
+
+  async function duplicateDeck(id) {
+    try {
+      const res = await fetch("/api/decks/" + encodeURIComponent(id));
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not open deck.");
+      const name = `${data.name || "Deck"} copy`;
+      const post = await fetch("/api/decks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      const created = await post.json().catch(() => ({}));
+      if (!post.ok) throw new Error(created.error || "Could not duplicate deck.");
+      await loadLibrary();
+      await openDeck(created.id);
+    } catch (error) {
+      showError("Could not duplicate deck.", error.message || String(error));
+    }
+  }
+
+  async function deleteDeck(id) {
+    const entry = library.find((deck) => deck.id === id);
+    const label = entry?.name || "this deck";
+    if (!confirm(`Delete “${label}”?`)) return;
+    try {
+      const res = await fetch("/api/decks/" + encodeURIComponent(id), { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not delete deck.");
+      if (currentDeck && currentDeck.id === id) {
+        resetView();
+        empty.hidden = false;
+      }
+      await loadLibrary();
+    } catch (error) {
+      showError("Could not delete deck.", error.message || String(error));
+    }
+  }
+
+  async function autosave() {
+    if (!dirty || !currentDeck) return;
+    const deck = currentDeck;
+    const version = saveVersion;
+    try {
+      const res = await fetch("/api/decks/" + encodeURIComponent(deck.id), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(deck),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not save deck.");
+      if (currentDeck === deck && version === saveVersion) {
+        deck.updatedAt = data.updatedAt;
+        dirty = false;
+      }
+      setSaveState();
+      await loadLibrary();
+    } catch (error) {
+      setSaveState();
+      showError("Could not save deck.", error.message || String(error));
+    }
   }
 
   function skeletons(count) {
@@ -447,6 +821,10 @@
 
   function render(deck) {
     current = deck.code;
+    currentDeck = null;
+    dirty = false;
+    deckNameInput.hidden = true;
+    $("deck-title").hidden = false;
     cardsView = deck.cards;
     counts = deck.cards.map((card) => card.num);
     baseCounts = [...counts];
@@ -533,6 +911,10 @@
     saved.textContent = "";
     syncTile(index);
     updateTotals();
+    if (currentDeck && currentDeck.cards[index]) {
+      currentDeck.cards[index].count = counts[index];
+      markDirty();
+    }
   }
 
   function updateTotals() {
@@ -623,12 +1005,38 @@
     saved.textContent = "";
     cardsView.forEach((card, i) => syncTile(i));
     updateTotals();
+    if (currentDeck) {
+      counts.forEach((n, i) => {
+        if (currentDeck.cards[i]) currentDeck.cards[i].count = n;
+      });
+      markDirty();
+    }
     announce("Copies reset to the deck list.");
   });
   $("example").addEventListener("click", () => {
     input.value = "6ZGG1";
     load("6ZGG1");
   });
+  newDeckBtn.addEventListener("click", () => {
+    const name = prompt("New deck name", "");
+    if (name !== null) newDeck(name);
+  });
+  deckNameInput.addEventListener("input", () => {
+    if (!currentDeck) return;
+    currentDeck.name = deckNameInput.value;
+    markDirty();
+  });
+  window.addEventListener("beforeunload", () => {
+    if (!dirty || !currentDeck) return;
+    fetch("/api/decks/" + encodeURIComponent(currentDeck.id), {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(currentDeck),
+      keepalive: true,
+    });
+  });
+
+  loadLibrary();
 
   const initial = new URLSearchParams(location.search).get("code");
   if (initial) {
