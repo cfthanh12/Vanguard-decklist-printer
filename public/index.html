@@ -306,6 +306,58 @@
     box-shadow: 0 0 0 3px var(--accent-soft);
   }
   .deck-name[hidden] { display: none; }
+  .builder {
+    display: grid; grid-template-columns: minmax(280px, 0.8fr) minmax(360px, 1.2fr);
+    gap: 18px; margin-top: 24px;
+  }
+  .builder[hidden] { display: none; }
+  .search-pane, .deck-pane {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+    padding: 18px;
+  }
+  .pane-head {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+    margin-bottom: 12px;
+  }
+  .pane-head h2 { font-size: 0.9375rem; font-weight: 640; }
+  .search-form { display: grid; grid-template-columns: minmax(0, 1fr) repeat(2, minmax(0, 120px)); gap: 8px; }
+  .search-form input, .search-form select, .custom-form input {
+    min-width: 0; height: 38px; padding: 0 10px; background: var(--surface);
+    border: 1px solid var(--line-strong); border-radius: 8px;
+  }
+  .search-form input:focus-visible, .search-form select:focus-visible, .custom-form input:focus-visible {
+    outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .search-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+  .search-filters select { width: 100%; }
+  .search-actions { display: flex; justify-content: flex-end; margin-top: 8px; }
+  .search-actions .btn { height: 38px; padding: 0 14px; }
+  .result-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 12px;
+    margin-top: 14px;
+  }
+  .result-card {
+    position: relative; border: 1px solid var(--line); border-radius: 9px; overflow: hidden;
+    background: var(--surface);
+  }
+  .result-card img { display: block; width: 100%; aspect-ratio: 59 / 86; object-fit: cover; background: oklch(0.94 0.005 60); }
+  .result-card-name {
+    min-height: 2.8em; padding: 6px 7px 34px; font-size: 0.75rem; line-height: 1.4;
+    color: var(--ink-soft);
+  }
+  .result-add {
+    position: absolute; right: 7px; bottom: 7px; width: 30px; height: 30px;
+    display: grid; place-items: center; border-radius: 7px; border: 1px solid var(--line-strong);
+    background: var(--surface); color: var(--accent); font-size: 1.1rem; font-weight: 700;
+  }
+  .load-more { width: 100%; height: 38px; margin-top: 12px; }
+  .custom-form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .custom-form .btn { height: 38px; grid-column: 1 / -1; }
+  .remove-copy {
+    width: 30px; height: 30px; display: grid; place-items: center;
+    border: 1px solid oklch(0.9 0.035 25); border-radius: 7px;
+    background: var(--danger-soft); color: var(--danger);
+  }
 
   .foot {
     margin-top: 40px; padding: 18px 0 56px; border-top: 1px solid var(--line);
@@ -333,6 +385,7 @@
   @media (max-width: 880px) {
     .layout { grid-template-columns: 1fr; }
     .sidebar { position: static; }
+    .builder { grid-template-columns: 1fr; }
   }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
@@ -393,6 +446,50 @@
         <span id="alert-body"></span>
       </div>
     </div>
+
+    <section class="builder" id="builder" hidden aria-label="Deck builder">
+      <aside class="search-pane" aria-label="Search cards">
+        <div class="pane-head">
+          <h2>Search cards</h2>
+        </div>
+        <form id="search-form">
+          <div class="search-form">
+            <input id="search-keyword" type="search" placeholder="Card name or keyword" aria-label="Search keyword">
+            <select id="filter-nation" aria-label="Nation"><option value="">Nation</option></select>
+            <select id="filter-clan" aria-label="Clan"><option value="">Clan</option></select>
+          </div>
+          <div class="search-filters">
+            <select id="filter-grade" aria-label="Grade">
+              <option value="">Grade</option><option value="0">0</option><option value="1">1</option>
+              <option value="2">2</option><option value="3">3</option><option value="4">4</option>
+            </select>
+            <select id="filter-regulation" aria-label="Regulation">
+              <option value="">Regulation</option><option value="D">D</option><option value="V">V</option>
+              <option value="P">P</option><option value="O">O</option>
+            </select>
+            <select id="filter-trigger" aria-label="Trigger">
+              <option value="">Trigger</option><option value="Critical">Critical</option><option value="Heal">Heal</option>
+              <option value="Draw">Draw</option><option value="Front">Front</option><option value="Stand">Stand</option>
+              <option value="Over">Over</option>
+            </select>
+          </div>
+          <div class="search-actions">
+            <button class="btn btn-dark" type="submit">Search</button>
+          </div>
+        </form>
+        <div class="result-grid" id="search-results"></div>
+        <button class="btn btn-quiet load-more" id="load-more" type="button" hidden>Load more</button>
+      </aside>
+
+      <div class="deck-pane" aria-label="Current deck">
+        <div class="pane-head"><h2>Deck cards</h2></div>
+        <form class="custom-form" id="custom-form">
+          <input id="custom-name" type="text" placeholder="Custom card name" aria-label="Custom card name">
+          <input id="custom-file" type="file" accept="image/png,image/jpeg,image/webp" aria-label="Custom card picture">
+          <button class="btn btn-quiet" type="submit">Add custom card</button>
+        </form>
+      </div>
+    </section>
 
     <section class="deck" id="deck" hidden aria-label="Deck">
       <div class="panel">
@@ -462,6 +559,11 @@
   const deckList = $("deck-list");
   const sidebarEmpty = $("sidebar-empty");
   const newDeckBtn = $("new-deck");
+  const builder = $("builder");
+  const searchForm = $("search-form");
+  const searchResults = $("search-results");
+  const loadMoreBtn = $("load-more");
+  const customForm = $("custom-form");
   const status = document.createElement("p");
   status.className = "sr-only";
   status.setAttribute("aria-live", "polite");
@@ -478,6 +580,10 @@
   let dirty = false;
   let saveTimer = null;
   let saveVersion = 0;
+  let searchPage = 1;
+  let searchHasMore = false;
+  let searchItems = [];
+  let currentSearchQuery = {};
 
   function announce(text) { status.textContent = ""; requestAnimationFrame(() => { status.textContent = text; }); }
 
@@ -497,6 +603,7 @@
   function resetView() {
     flushPendingSave();
     alert_.hidden = true;
+    builder.hidden = true;
     deckSection.hidden = true;
     sheets.hidden = true;
     empty.hidden = true;
@@ -586,6 +693,122 @@
     renderLibrary();
   }
 
+  function populateCatalogOptions(nations, clans) {
+    const nation = $("filter-nation");
+    const clan = $("filter-clan");
+    const nationValue = nation.value;
+    const clanValue = clan.value;
+    nation.replaceChildren(new Option("Nation", ""));
+    clan.replaceChildren(new Option("Clan", ""));
+    for (const value of nations || []) {
+      if (value) nation.add(new Option(typeof value === "string" ? value : value.name || value.value || "", typeof value === "string" ? value : value.value || value.name || ""));
+    }
+    for (const value of clans || []) {
+      if (value) clan.add(new Option(typeof value === "string" ? value : value.name || value.value || "", typeof value === "string" ? value : value.value || value.name || ""));
+    }
+    if ([...nation.options].some((option) => option.value === nationValue)) nation.value = nationValue;
+    if ([...clan.options].some((option) => option.value === clanValue)) clan.value = clanValue;
+  }
+
+  function renderResults() {
+    const frag = document.createDocumentFragment();
+    for (const card of searchItems) {
+      const tile = document.createElement("article");
+      tile.className = "result-card";
+      const img = document.createElement("img");
+      img.src = card.image;
+      img.alt = "";
+      img.loading = "lazy";
+      const name = document.createElement("div");
+      name.className = "result-card-name";
+      name.textContent = card.name || card.card_number || "";
+      const add = document.createElement("button");
+      add.type = "button";
+      add.className = "result-add";
+      add.textContent = "+";
+      add.setAttribute("aria-label", `Add ${card.name || "card"} to deck`);
+      add.addEventListener("click", () => addDbCard(card));
+      tile.append(img, name, add);
+      frag.append(tile);
+    }
+    searchResults.replaceChildren(frag);
+  }
+
+  async function search(query, append = false) {
+    const params = new URLSearchParams();
+    if (query.keyword) params.set("keyword", query.keyword);
+    if (query.nation) params.set("nation", query.nation);
+    if (query.clan) params.set("clan", query.clan);
+    if (query.grade) params.set("grade", query.grade);
+    if (query.regulation) params.set("regulation", query.regulation);
+    if (query.trigger) params.set("trigger", query.trigger);
+    params.set("page", String(searchPage));
+    params.set("per_page", "24");
+    try {
+      const res = await fetch("/api/cards?" + params.toString());
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Card search failed.");
+      populateCatalogOptions(data.nations, data.clans);
+      searchItems = append ? [...searchItems, ...(data.items || [])] : (data.items || []);
+      searchHasMore = searchItems.length < (data.total || 0);
+      loadMoreBtn.hidden = !searchHasMore;
+      renderResults();
+    } catch (error) {
+      showError("Card search failed.", error.message || String(error));
+    }
+  }
+
+  async function loadMore() {
+    if (!searchHasMore) return;
+    searchPage += 1;
+    await search(currentSearchQuery, true);
+  }
+
+  function addDbCard(card) {
+    if (!currentDeck) {
+      showError("Open a deck first.", "Create or open a saved deck before adding cards.");
+      return;
+    }
+    const existing = currentDeck.cards.find((item) => item.source === "db" && item.card_number === card.card_number);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      currentDeck.cards.push({
+        id: crypto.randomUUID(),
+        source: "db",
+        card_number: card.card_number,
+        name: card.name,
+        picture: card.picture,
+        count: 1,
+      });
+    }
+    markDirty();
+    renderLibraryDeck(currentDeck);
+  }
+
+  function removeCard(index) {
+    if (!currentDeck) return;
+    currentDeck.cards.splice(index, 1);
+    markDirty();
+    renderLibraryDeck(currentDeck);
+  }
+
+  async function addCustomCard(file, name) {
+    if (!currentDeck) throw new Error("Open a deck first.");
+    if (!name.trim()) throw new Error("Enter a name for the custom card.");
+    if (!file) throw new Error("Choose an image file.");
+    const res = await fetch("/api/decks/" + encodeURIComponent(currentDeck.id) + "/cards?name=" + encodeURIComponent(name.trim()), {
+      method: "POST",
+      headers: { "Content-Type": file.type || "application/octet-stream" },
+      body: file,
+    });
+    const card = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(card.error || "Could not add the custom card.");
+    currentDeck.cards.push(card);
+    markDirty();
+    renderLibraryDeck(currentDeck);
+  }
+
   async function openDeck(id) {
     await flushPendingSave();
     try {
@@ -594,6 +817,7 @@
       if (!res.ok) throw new Error(data.error || "Could not open deck.");
       currentDeck = data;
       dirty = false;
+      builder.hidden = false;
       renderLibraryDeck(data);
       renderLibrary();
     } catch (error) {
@@ -677,7 +901,14 @@
       more.textContent = "+";
       more.setAttribute("aria-label", `Print one more copy of ${card.name || "card"}`);
 
-      copies.append(less, count, more);
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "remove-copy";
+      remove.textContent = "×";
+      remove.setAttribute("aria-label", `Remove ${card.name || "card"} from deck`);
+      remove.addEventListener("click", () => removeCard(i));
+
+      copies.append(less, count, more, remove);
       copies.addEventListener("click", (event) => {
         const button = event.target.closest("button[data-step]");
         if (!button) return;
@@ -911,11 +1142,15 @@
     tile.classList.toggle("is-off", counts[index] === 0);
     tile.querySelector(".count").textContent = counts[index];
     tile.querySelector('[data-step="-1"]').disabled = counts[index] === 0;
-    tile.querySelector('[data-step="1"]').disabled = counts[index] >= cardsView[index].num;
+    tile.querySelector('[data-step="1"]').disabled = !currentDeck && counts[index] >= cardsView[index].num;
   }
 
   function setCount(index, value) {
-    counts[index] = Math.max(0, Math.min(cardsView[index].num, value));
+    counts[index] = currentDeck ? Math.max(0, value) : Math.max(0, Math.min(cardsView[index].num, value));
+    if (currentDeck && counts[index] === 0) {
+      removeCard(index);
+      return;
+    }
     saved.textContent = "";
     syncTile(index);
     updateTotals();
@@ -1033,6 +1268,30 @@
     if (!currentDeck) return;
     currentDeck.name = deckNameInput.value;
     markDirty();
+  });
+  searchForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    currentSearchQuery = {
+      keyword: $("search-keyword").value.trim(),
+      nation: $("filter-nation").value,
+      clan: $("filter-clan").value,
+      grade: $("filter-grade").value,
+      regulation: $("filter-regulation").value,
+      trigger: $("filter-trigger").value,
+    };
+    searchPage = 1;
+    search(currentSearchQuery);
+  });
+  loadMoreBtn.addEventListener("click", loadMore);
+  customForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try {
+      await addCustomCard($("custom-file").files[0], $("custom-name").value);
+      $("custom-name").value = "";
+      $("custom-file").value = "";
+    } catch (error) {
+      showError("Could not add custom card.", error.message || String(error));
+    }
   });
   window.addEventListener("beforeunload", () => {
     if (!dirty || !currentDeck) return;
