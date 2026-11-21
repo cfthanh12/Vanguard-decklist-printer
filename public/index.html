@@ -488,7 +488,14 @@
     announce(title);
   }
 
+  function flushPendingSave() {
+    if (!dirty || !currentDeck) return;
+    clearTimeout(saveTimer);
+    return autosave();
+  }
+
   function resetView() {
+    flushPendingSave();
     alert_.hidden = true;
     deckSection.hidden = true;
     sheets.hidden = true;
@@ -580,6 +587,7 @@
   }
 
   async function openDeck(id) {
+    await flushPendingSave();
     try {
       const res = await fetch("/api/decks/" + encodeURIComponent(id));
       const data = await res.json().catch(() => ({}));
@@ -733,14 +741,14 @@
 
   async function duplicateDeck(id) {
     try {
-      const res = await fetch("/api/decks/" + encodeURIComponent(id));
+      const res = await fetch("/api/decks/" + encodeURIComponent(id) + "/export");
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Could not open deck.");
-      const name = `${data.name || "Deck"} copy`;
-      const post = await fetch("/api/decks", {
+      data.name = `${data.name || "Deck"} copy`;
+      const post = await fetch("/api/decks/import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify(data),
       });
       const created = await post.json().catch(() => ({}));
       if (!post.ok) throw new Error(created.error || "Could not duplicate deck.");
