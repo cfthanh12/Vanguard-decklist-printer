@@ -101,6 +101,17 @@ test("GET / serves the provided HTML", async () => {
   assert.match(await res.text(), /hi/);
 });
 
+test("deck builder layout is full-width with search on the right", () => {
+  const html = fs.readFileSync(path.join(process.cwd(), "public/index.html"), "utf8");
+  assert.match(html, /\.wrap\s*\{\s*width:\s*100%;/);
+  assert.match(html, /\.builder\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+(?:minmax\(280px,\s*)?[^;]+;/s);
+  assert.match(html, /\.search-form\s*\{[^}]*grid-template-columns:\s*[^;]*minmax\([^;]*1fr[^;]*;/s);
+  assert.match(html, /\.result-grid\s*\{[^}]*repeat\(auto-fill,\s*minmax\((?:72|76|80|84|88|92)px,/s);
+  const deckPane = html.indexOf('class="deck-pane"');
+  const searchPane = html.indexOf('class="search-pane"');
+  assert.ok(deckPane >= 0 && searchPane > deckPane, "deck pane should appear before right-side search pane");
+});
+
 test("POST /api/decks creates a deck with an id and empty cards", async () => {
   const res = await fetch(`${base}/api/decks`, {
     method: "POST",

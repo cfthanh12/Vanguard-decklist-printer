@@ -38,7 +38,7 @@
     overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
   }
 
-  .wrap { width: min(1180px, 100%); margin: 0 auto; padding: 0 24px; }
+  .wrap { width: 100%; margin: 0 auto; padding: 0 24px; }
 
   /* masthead */
   .masthead {
@@ -307,7 +307,7 @@
   }
   .deck-name[hidden] { display: none; }
   .builder {
-    display: grid; grid-template-columns: minmax(280px, 0.8fr) minmax(360px, 1.2fr);
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
     gap: 18px; margin-top: 24px;
   }
   .builder[hidden] { display: none; }
@@ -320,7 +320,7 @@
     margin-bottom: 12px;
   }
   .pane-head h2 { font-size: 0.9375rem; font-weight: 640; }
-  .search-form { display: grid; grid-template-columns: minmax(0, 1fr) repeat(2, minmax(0, 120px)); gap: 8px; }
+  .search-form { display: grid; grid-template-columns: minmax(180px, 1fr) repeat(2, minmax(0, 88px)); gap: 8px; }
   .search-form input, .search-form select, .custom-form input {
     min-width: 0; height: 38px; padding: 0 10px; background: var(--surface);
     border: 1px solid var(--line-strong); border-radius: 8px;
@@ -333,7 +333,7 @@
   .search-actions { display: flex; justify-content: flex-end; margin-top: 8px; }
   .search-actions .btn { height: 38px; padding: 0 14px; }
   .result-grid {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 12px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 10px;
     margin-top: 14px;
   }
   .result-card {
@@ -448,6 +448,15 @@
     </div>
 
     <section class="builder" id="builder" hidden aria-label="Deck builder">
+      <div class="deck-pane" aria-label="Current deck">
+        <div class="pane-head"><h2>Deck cards</h2></div>
+        <form class="custom-form" id="custom-form">
+          <input id="custom-name" type="text" placeholder="Custom card name" aria-label="Custom card name">
+          <input id="custom-file" type="file" accept="image/png,image/jpeg,image/webp" aria-label="Custom card picture">
+          <button class="btn btn-quiet" type="submit">Add custom card</button>
+        </form>
+      </div>
+
       <aside class="search-pane" aria-label="Search cards">
         <div class="pane-head">
           <h2>Search cards</h2>
@@ -480,15 +489,6 @@
         <div class="result-grid" id="search-results"></div>
         <button class="btn btn-quiet load-more" id="load-more" type="button" hidden>Load more</button>
       </aside>
-
-      <div class="deck-pane" aria-label="Current deck">
-        <div class="pane-head"><h2>Deck cards</h2></div>
-        <form class="custom-form" id="custom-form">
-          <input id="custom-name" type="text" placeholder="Custom card name" aria-label="Custom card name">
-          <input id="custom-file" type="file" accept="image/png,image/jpeg,image/webp" aria-label="Custom card picture">
-          <button class="btn btn-quiet" type="submit">Add custom card</button>
-        </form>
-      </div>
     </section>
 
     <section class="deck" id="deck" hidden aria-label="Deck">
