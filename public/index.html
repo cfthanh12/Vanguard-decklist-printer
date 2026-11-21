@@ -320,7 +320,7 @@
     margin-bottom: 12px;
   }
   .pane-head h2 { font-size: 0.9375rem; font-weight: 640; }
-  .search-form { display: grid; grid-template-columns: minmax(180px, 1fr) repeat(2, minmax(0, 88px)); gap: 8px; }
+  .search-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .search-form input, .search-form select, .custom-form input {
     min-width: 0; height: 38px; padding: 0 10px; background: var(--surface);
     border: 1px solid var(--line-strong); border-radius: 8px;
@@ -328,7 +328,7 @@
   .search-form input:focus-visible, .search-form select:focus-visible, .custom-form input:focus-visible {
     outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
   }
-  .search-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+  .search-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
   .search-filters select { width: 100%; }
   .search-actions { display: flex; justify-content: flex-end; margin-top: 8px; }
   .search-actions .btn { height: 38px; padding: 0 14px; }
@@ -346,12 +346,15 @@
     min-height: 2.8em; padding: 6px 7px 34px; font-size: 0.75rem; line-height: 1.4;
     color: var(--ink-soft);
   }
+  .search-sentinel {
+    grid-column: 1 / -1; min-height: 1px; color: var(--muted);
+    font-size: 0.75rem; text-align: center;
+  }
   .result-add {
     position: absolute; right: 7px; bottom: 7px; width: 30px; height: 30px;
     display: grid; place-items: center; border-radius: 7px; border: 1px solid var(--line-strong);
     background: var(--surface); color: var(--accent); font-size: 1.1rem; font-weight: 700;
   }
-  .load-more { width: 100%; height: 38px; margin-top: 12px; }
   .custom-form {
     display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
     gap: 8px; margin-bottom: 20px; align-items: center;
@@ -481,10 +484,10 @@
         <form id="search-form">
           <div class="search-form">
             <input id="search-keyword" type="search" placeholder="Card name or keyword" aria-label="Search keyword">
-            <select id="filter-nation" aria-label="Nation"><option value="">Nation</option></select>
-            <select id="filter-clan" aria-label="Clan"><option value="">Clan</option></select>
           </div>
           <div class="search-filters">
+            <select id="filter-nation" aria-label="Nation"><option value="">Nation</option></select>
+            <select id="filter-clan" aria-label="Clan"><option value="">Clan</option></select>
             <select id="filter-grade" aria-label="Grade">
               <option value="">Grade</option><option value="0">0</option><option value="1">1</option>
               <option value="2">2</option><option value="3">3</option><option value="4">4</option>
@@ -503,8 +506,9 @@
             <button class="btn btn-dark" type="submit">Search</button>
           </div>
         </form>
-        <div class="result-grid" id="search-results"></div>
-        <button class="btn btn-quiet load-more" id="load-more" type="button" hidden>Load more</button>
+        <div class="result-grid" id="search-results">
+          <div class="search-sentinel" id="search-sentinel" aria-live="polite"></div>
+        </div>
       </aside>
     </section>
 
@@ -571,7 +575,7 @@
   const builder = $("builder");
   const searchForm = $("search-form");
   const searchResults = $("search-results");
-  const loadMoreBtn = $("load-more");
+  const searchSentinel = $("search-sentinel");
   const customForm = $("custom-form");
   const exportDeckBtn = $("export-deck");
   const importDeckFileBtn = $("import-deck-file");
@@ -596,6 +600,12 @@
   let searchHasMore = false;
   let searchItems = [];
   let currentSearchQuery = {};
+  let searchLoading = false;
+  let searchRequest = 0;
+  const searchObserver = new IntersectionObserver((entries) => {
+    if (entries.some((entry) => entry.isIntersecting)) loadMore();
+  }, { root: searchResults, rootMargin: "160px 0px" });
+  searchObserver.observe(searchSentinel);
 
   function announce(text) { status.textContent = ""; requestAnimationFrame(() => { status.textContent = text; }); }
 
@@ -743,10 +753,14 @@
       tile.append(img, name, add);
       frag.append(tile);
     }
-    searchResults.replaceChildren(frag);
+    searchResults.replaceChildren(frag, searchSentinel);
   }
 
   async function search(query, append = false) {
+    if (append && searchLoading) return;
+    const request = ++searchRequest;
+    searchLoading = true;
+    searchSentinel.textContent = append ? "Loading more cards…" : "Loading cards…";
     const params = new URLSearchParams();
     if (query.keyword) params.set("keyword", query.keyword);
     if (query.nation) params.set("nation", query.nation);
@@ -760,18 +774,24 @@
       const res = await fetch("/api/cards?" + params.toString());
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Card search failed.");
+      if (request !== searchRequest) return;
       populateCatalogOptions(data.nations, data.clans);
       searchItems = append ? [...searchItems, ...(data.items || [])] : (data.items || []);
       searchHasMore = searchItems.length < (data.total || 0);
-      loadMoreBtn.hidden = !searchHasMore;
+      searchSentinel.textContent = "";
       renderResults();
     } catch (error) {
+      if (request !== searchRequest) return;
+      if (append) searchPage = Math.max(1, searchPage - 1);
+      searchSentinel.textContent = "";
       showError("Card search failed.", error.message || String(error));
+    } finally {
+      if (request === searchRequest) searchLoading = false;
     }
   }
 
   async function loadMore() {
-    if (!searchHasMore) return;
+    if (!searchHasMore || searchLoading) return;
     searchPage += 1;
     await search(currentSearchQuery, true);
   }
@@ -1379,7 +1399,6 @@
     searchPage = 1;
     search(currentSearchQuery);
   });
-  loadMoreBtn.addEventListener("click", loadMore);
   customForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     try {

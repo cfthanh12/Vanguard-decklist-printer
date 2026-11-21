@@ -106,6 +106,18 @@ test("deck list is beside search and the custom-card form stays compact", () => 
   assert.match(html, /\.custom-form\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+minmax\(0,\s*1fr\)\s+auto;/s);
   assert.match(html, /\.custom-form \.btn\s*\{[^}]*height:\s*38px;[^}]*padding:\s*0 12px;/s);
   assert.match(html, /\.result-grid\s*\{[^}]*max-height:\s*[^;]+;[^}]*overflow-y:\s*auto;/s);
+  assert.match(html, /id="search-sentinel"/);
+  assert.doesNotMatch(html, /load-more/);
+  assert.match(html, /new IntersectionObserver/);
+  assert.match(html, /root:\s*searchResults/);
+  assert.match(html, /if \(!searchHasMore \|\| searchLoading\) return;/);
+  assert.match(html, /\.search-form\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);/s);
+  assert.match(html, /\.search-filters\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/s);
+  const searchForm = html.indexOf('<form id="search-form">');
+  const keyword = html.indexOf('id="search-keyword"', searchForm);
+  const nation = html.indexOf('id="filter-nation"', searchForm);
+  const clan = html.indexOf('id="filter-clan"', searchForm);
+  assert.ok(keyword >= 0 && nation > keyword && clan > nation);
   const deckPane = html.indexOf('class="deck-pane"');
   const sheets = html.indexOf('<section class="sheets" id="sheets"');
   const searchPane = html.indexOf('class="search-pane"');
