@@ -486,8 +486,8 @@
             <input id="search-keyword" type="search" placeholder="Card name or keyword" aria-label="Search keyword">
           </div>
           <div class="search-filters">
-            <select id="filter-nation" aria-label="Nation"><option value="">Nation</option></select>
-            <select id="filter-clan" aria-label="Clan"><option value="">Clan</option></select>
+            <select id="filter-nation" aria-label="Nation" disabled><option value="">Loading nations…</option></select>
+            <select id="filter-clan" aria-label="Clan" disabled><option value="">Loading clans…</option></select>
             <select id="filter-grade" aria-label="Grade">
               <option value="">Grade</option><option value="0">0</option><option value="1">1</option>
               <option value="2">2</option><option value="3">3</option><option value="4">4</option>
@@ -602,6 +602,8 @@
   let currentSearchQuery = {};
   let searchLoading = false;
   let searchRequest = 0;
+  let catalogFiltersLoaded = false;
+  let catalogFiltersPromise = null;
   const searchObserver = new IntersectionObserver((entries) => {
     if (entries.some((entry) => entry.isIntersecting)) loadMore();
   }, { root: searchResults, rootMargin: "160px 0px" });
@@ -716,6 +718,9 @@
   }
 
   function populateCatalogOptions(nations, clans) {
+    if (!Array.isArray(nations) || nations.length === 0 || !Array.isArray(clans) || clans.length === 0) {
+      return false;
+    }
     const nation = $("filter-nation");
     const clan = $("filter-clan");
     const nationValue = nation.value;
@@ -730,6 +735,40 @@
     }
     if ([...nation.options].some((option) => option.value === nationValue)) nation.value = nationValue;
     if ([...clan.options].some((option) => option.value === clanValue)) clan.value = clanValue;
+    nation.disabled = false;
+    clan.disabled = false;
+    catalogFiltersLoaded = true;
+    return true;
+  }
+
+  async function loadCatalogFilters() {
+    if (catalogFiltersLoaded) return;
+    if (!catalogFiltersPromise) {
+      catalogFiltersPromise = (async () => {
+        const res = await fetch("/api/cards?page=1&per_page=1");
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "Could not load catalog filters.");
+        if (!populateCatalogOptions(data.nations, data.clans)) {
+          throw new Error("The card catalog returned no nation or clan filters.");
+        }
+      })();
+    }
+    try {
+      await catalogFiltersPromise;
+    } finally {
+      catalogFiltersPromise = null;
+    }
+  }
+
+  function reportCatalogFilterError(error) {
+    if (catalogFiltersLoaded) return;
+    const nation = $("filter-nation");
+    const clan = $("filter-clan");
+    nation.replaceChildren(new Option("Nation", ""));
+    clan.replaceChildren(new Option("Clan", ""));
+    nation.disabled = false;
+    clan.disabled = false;
+    showError("Could not load catalog filters.", error.message || String(error));
   }
 
   function renderResults() {
@@ -775,7 +814,7 @@
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Card search failed.");
       if (request !== searchRequest) return;
-      populateCatalogOptions(data.nations, data.clans);
+      if (!catalogFiltersLoaded) populateCatalogOptions(data.nations, data.clans);
       searchItems = append ? [...searchItems, ...(data.items || [])] : (data.items || []);
       searchHasMore = searchItems.length < (data.total || 0);
       searchSentinel.textContent = "";
@@ -834,10 +873,9 @@
       headers: { "Content-Type": file.type || "application/octet-stream" },
       body: file,
     });
-    const card = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(card.error || "Could not add the custom card.");
-    currentDeck.cards.push(card);
-    markDirty();
+    const responseDeck = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(responseDeck.error || "Could not add the custom card.");
+    currentDeck = responseDeck;
     renderLibraryDeck(currentDeck);
   }
 
@@ -1399,6 +1437,11 @@
     searchPage = 1;
     search(currentSearchQuery);
   });
+  for (const filter of [$("filter-nation"), $("filter-clan")]) {
+    filter.addEventListener("focus", () => {
+      if (!catalogFiltersLoaded) loadCatalogFilters().catch(reportCatalogFilterError);
+    });
+  }
   customForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     try {
@@ -1420,6 +1463,7 @@
   });
 
   loadLibrary();
+  loadCatalogFilters().catch(reportCatalogFilterError);
 
   const initial = new URLSearchParams(location.search).get("code");
   if (initial) {

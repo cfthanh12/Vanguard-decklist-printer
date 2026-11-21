@@ -53,8 +53,8 @@ const fakeFetch = async (url) => {
       total: 1,
       page: 1,
       per_page: 24,
-      nations: [],
-      clans: [],
+      nations: ["Dragon Empire", "Keter Sanctuary"],
+      clans: ["Royal Paladin", "Kagero"],
       items: [
         {
           card_number: "BT01/001EN",
@@ -111,6 +111,11 @@ test("deck list is beside search and the custom-card form stays compact", () => 
   assert.match(html, /new IntersectionObserver/);
   assert.match(html, /root:\s*searchResults/);
   assert.match(html, /if \(!searchHasMore \|\| searchLoading\) return;/);
+  assert.match(html, /async function loadCatalogFilters\(\)/);
+  assert.match(html, /fetch\("\/api\/cards\?page=1&per_page=1"/);
+  assert.match(html, /loadCatalogFilters\(\)\.catch/);
+  assert.match(html, /currentDeck = responseDeck;/);
+  assert.doesNotMatch(html, /currentDeck\.cards\.push\(card\)/);
   assert.match(html, /\.search-form\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);/s);
   assert.match(html, /\.search-filters\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/s);
   const searchForm = html.indexOf('<form id="search-form">');
@@ -151,6 +156,8 @@ test("GET /api/cards proxies the catalog search", async () => {
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.equal(body.items[0].name, "Blaster Blade");
+  assert.deepEqual(body.nations, ["Dragon Empire", "Keter Sanctuary"]);
+  assert.deepEqual(body.clans, ["Royal Paladin", "Kagero"]);
 });
 
 test("POST /api/pdf builds a PDF from a title and card list", async () => {
@@ -269,4 +276,33 @@ test("deck export/import round-trips a custom image through the API", async () =
     imported.cards[0].image,
     `images/${imported.id}/${imported.cards[0].id}.png`
   );
+});
+
+test("re-adding a custom card with the same name merges its count", async () => {
+  const createRes = await fetch(`${base}/api/decks`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: "Merge custom cards" }),
+  });
+  const deck = await createRes.json();
+  const addCustom = (name) =>
+    fetch(`${base}/api/decks/${deck.id}/cards?name=${encodeURIComponent(name)}`, {
+      method: "POST",
+      headers: { "Content-Type": "image/png" },
+      body: pngBytes,
+    });
+
+  const firstRes = await addCustom("My proxy");
+  const first = await firstRes.json();
+  const existingCard = first.cards[0];
+  const secondRes = await addCustom(" my PROXY ");
+  const merged = await secondRes.json();
+
+  assert.equal(merged.cards.length, 1);
+  assert.equal(merged.cards[0].id, existingCard.id);
+  assert.equal(merged.cards[0].count, 2);
+  assert.equal(merged.cards[0].image, existingCard.image);
+  assert.deepEqual(fs.readdirSync(path.join(tmpDir, "images", deck.id)), [
+    `${existingCard.id}.png`,
+  ]);
 });
