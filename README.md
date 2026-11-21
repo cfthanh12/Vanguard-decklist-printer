@@ -21,11 +21,11 @@ Ready-to-send zips live in `dist/share/`:
 
 | Zip | Contains |
 | --- | --- |
-| `DecklistPrinter-Windows.zip` | Windows 10/11 (x64) |
-| `DecklistPrinter-Mac.zip` | macOS Apple silicon + Intel |
-| `DecklistPrinter-Linux.zip` | Linux (x64) |
+| [DecklistPrinter-Windows.zip](https://github.com/cfthanh12/decklist-printer/releases/download/v1.0.0/DecklistPrinter-Windows.zip) | Windows 10/11 (x64) |
+| [DecklistPrinter-Mac.zip](https://github.com/cfthanh12/decklist-printer/releases/download/v1.0.0/DecklistPrinter-Mac.zip) | macOS Apple silicon + Intel |
+| [DecklistPrinter-Linux.zip](https://github.com/cfthanh12/decklist-printer/releases/download/v1.0.0/DecklistPrinter-Linux.zip) | Linux (x64) |
 
-Upload the one matching your friend's computer to Google Drive and send the link. Each zip holds a self-contained executable plus `START-HERE.txt`: no Node, no installer, no setup. If you are not sure which they use, send the Windows one, it is the most common.
+Download the zip for your computer. Each one contains a self-contained executable plus `START-HERE.txt`: no Node, no installer, no setup. If you are not sure which one you need, choose Windows.
 
 Rebuild them with `npm run build:binaries` (requires [Bun](https://bun.sh) once: `npm i -g bun`).
 
